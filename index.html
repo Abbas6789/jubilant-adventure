@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AB LITER | Ultimate Admin</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --bg: #080a0c; --card: #111418; --blue: #00d2ff; --green: #00ff88; --red: #ff3e3e; --text: #e1e1e1; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; }
+        .sidebar { width: 250px; height: 100vh; background: var(--card); border-right: 1px solid #222; padding: 20px; position: fixed; }
+        .main-content { margin-left: 250px; padding: 30px; width: calc(100% - 250px); }
+        .card { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid #222; margin-bottom: 25px; }
+        h2, h3 { color: var(--blue); margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-size: 13px; color: #888; }
+        select, input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        .btn-blue { background: var(--blue); color: #000; }
+        .btn-green { background: var(--green); color: #000; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; border-bottom: 1px solid #222; text-align: left; font-size: 13px; }
+        .status-active { color: var(--green); font-weight: bold; }
+        .status-expired { color: var(--red); font-weight: bold; }
+        .reset-btn { background: #ff9900; color: #000; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>AB LITER</h2>
+    <p style="color:var(--green); font-size:12px;">● Admin Online</p>
+    <hr style="border:0; border-top:1px solid #222; margin:20px 0;">
+    <div style="font-size:14px; color:var(--blue);"><i class="fas fa-cog"></i> کنٹرول پینل</div>
+</div>
+
+<div class="main-content">
+    <div class="card">
+        <h3><i class="fas fa-key"></i> لائسنس کی بنائیں</h3>
+        <label>ڈیوریشن (وقت)</label>
+        <select id="key-time">
+            <option value="1">24 گھنٹے (Trial)</option>
+            <option value="7">7 دن (Weekly)</option>
+            <option value="30">30 دن (Monthly)</option>
+            <option value="365">1 سال (VIP)</option>
+            <option value="36500">لائف ٹائم (Lifetime)</option> </select>
+        <input type="text" id="generated-key" readonly placeholder="Key یہاں نظر آئے گی">
+        <button class="btn btn-blue" onclick="generateAndSaveKey()">GENERATE & SAVE KEY</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="card">
+            <h3><i class="fas fa-bolt"></i> ایکوریسی کنٹرول</h3>
+            <label>فیصد سیٹ کریں: <span id="acc-label" style="color:var(--blue)">98%</span></label>
+            <input type="range" min="50" max="99" value="98" oninput="updateAcc(this.value)">
+            <button class="btn btn-green" onclick="saveSettings()">SAVE ACCURACY</button>
+        </div>
+
+        <div class="card">
+            <h3><i class="fab fa-whatsapp"></i> واٹس ایپ سیٹنگ</h3>
+            <label>اپنا نمبر لکھیں (بغیر + کے، مثلاً 92300...)</label>
+            <input type="text" id="wa-number" placeholder="923000000000">
+            <button class="btn btn-green" onclick="saveWhatsApp()">SAVE NUMBER</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-database"></i> یوزر ریکارڈ</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>لائسنس کی</th>
+                    <th>اسٹیٹس</th>
+                    <th>ڈیوائس</th>
+                    <th>ایکشن</th>
+                </tr>
+            </thead>
+            <tbody id="key-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Firebase Config
+    const firebaseConfig = { databaseURL: "https://ab-liter-server-default-rtdb.firebaseio.com/" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Generate Key with Lifetime Logic
+    function generateAndSaveKey() {
+        const fullKey = "AB-V4-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const days = parseInt(document.getElementById('key-time').value);
+        const expiryTimestamp = new Date().getTime() + (days * 24 * 60 * 60 * 1000);
+
+        db.ref('keys/' + fullKey).set({
+            key: fullKey,
+            expiryAt: expiryTimestamp,
+            deviceId: "Not Bound",
+            status: "ACTIVE",
+            type: days > 30000 ? "LIFETIME" : days + " Days"
+        }).then(() => {
+            document.getElementById('generated-key').value = fullKey;
+            alert("کی کامیابی سے محفوظ ہوگئی!");
+        });
+    }
+
+    // Load Records
+    function loadData() {
+        db.ref('keys').on('value', (snap) => {
+            const table = document.getElementById('key-table');
+            table.innerHTML = "";
+            const now = new Date().getTime();
+
+            snap.forEach((child) => {
+                const data = child.val();
+                const isExpired = now > data.expiryAt;
+                table.innerHTML += `
+                    <tr>
+                        <td><b>${data.key}</b></td>
+                        <td class="${isExpired ? 'status-expired' : 'status-active'}">${isExpired ? 'EXPIRED' : 'ACTIVE'}</td>
+                        <td style="font-size:10px;">${data.deviceId}</td>
+                        <td>
+                            <button class="reset-btn" onclick="resetDev('${data.key}')">RESET</button>
+                            <i class="fas fa-trash" style="color:var(--red); cursor:pointer; margin-left:10px;" onclick="delKey('${data.key}')"></i>
+                        </td>
+                    </tr>`;
+            });
+        });
+        
+        // Load Current WA Number
+        db.ref('settings/whatsapp').once('value', (s) => { if(s.exists()) document.getElementById('wa-number').value = s.val(); });
+    }
+
+    function saveWhatsApp() {
+        const num = document.getElementById('wa-number').value;
+        db.ref('settings/whatsapp').set(num).then(() => alert("واٹس ایپ نمبر اپڈیٹ ہوگیا!"));
+    }
+
+    function resetDev(id) { db.ref('keys/' + id).update({ deviceId: "Not Bound" }); alert("ڈیوائس ری سیٹ ہوگئی!"); }
+    function delKey(id) { if(confirm("ڈیلیٹ کریں؟")) db.ref('keys/' + id).remove(); }
+    function updateAcc(v) { document.getElementById('acc-label').innerText = v + "%"; }
+    function saveSettings() {
+        const v = document.getElementById('acc-label').innerText;
+        db.ref('settings/accuracy').set(v).then(() => alert("ایکوریسی سیو ہوگئی!"));
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+  </html>
+  
